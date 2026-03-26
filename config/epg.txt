@@ -1,1 +1,2 @@
-
+# EPG 订阅链接（目前 generate.js 暂用占位，你可自行扩展下载）
+https://iptv-org.github.io/epg/guides/cn.xml
