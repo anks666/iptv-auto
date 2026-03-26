@@ -1,0 +1,30 @@
+name: 自动更新 IPTV 源
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # 每 2 小时
+  workflow_dispatch:        # 手动触发按钮
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies & Generate
+        run: |
+          npm ci
+          npm run generate
+
+      - name: Commit changes
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add output/ subscribe.txt config/
+          git commit -m "自动更新 IPTV 源 $(date '+%Y-%m-%d %H:%M')" --allow-empty || echo "No changes to commit"
+          git push
