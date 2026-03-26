@@ -84,6 +84,7 @@ const CONFIG = {
     "标清": /标清|SD|720/i,
     "高清": /高清|HD|FHD|1080/i,
     "4K": /4K|UHD|2160/i,
+    "体育": /体育|Sport/i,
   },
 
   aliasMap: {
