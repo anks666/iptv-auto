@@ -1,4 +1,0 @@
-# 在这里添加你的直播源订阅链接（每行一个，支持 m3u 链接或单个流地址）
-# 示例：
-# https://你的私人iptv.com/playlist.m3u
-# http://example.com:8080/live/CCTV1.m3u8

@@ -1,7 +1,0 @@
-{
-  "name": "iptv-auto",
-  "version": "1.0.0",
-  "scripts": {
-    "generate": "node generate.js"
-  }
-}

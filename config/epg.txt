@@ -1,3 +1,0 @@
-# EPG 订阅链接（目前只取第一行下载）
-https://iptv-org.github.io/epg/guides/cn.xml
-# 你可以添加更多行，后续可扩展
