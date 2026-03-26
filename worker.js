@@ -96,8 +96,8 @@ const CONFIG = {
 
   // 支持多个 EPG 源，自动合并
   epgUrls: [
-    "https://iptv-org.github.io/epg/guides/cn.xml"
-    "https://m3u.ibert.me/epg/112114_xyz.xml"
+    "https://iptv-org.github.io/epg/guides/cn.xml",
+    "https://m3u.ibert.me/epg/112114_xyz.xml",
     "https://m3u.ibert.me/epg/51zmt.xml"
     // 可继续添加更多 EPG 链接
   ]
