@@ -91,6 +91,7 @@ const CONFIG = {
     "CCTV1": "CCTV-1",
     "CCTV-1 HD": "CCTV-1 高清",
     "CCTV1 HD": "CCTV-1 高清"
+    "CCTV1 4K": "CCTV-1 4K"
   },
 
   // 支持多个 EPG 源，自动合并
