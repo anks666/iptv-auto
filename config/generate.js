@@ -5,8 +5,13 @@ const CONFIG_DIR = 'config';
 const OUTPUT_DIR = 'output';
 const LOG_DIR = path.join(OUTPUT_DIR, 'log');
 
-// 创建目录
-[OUTPUT_DIR, path.join(OUTPUT_DIR, 'ipv4'), path.join(OUTPUT_DIR, 'ipv6'), path.join(OUTPUT_DIR, 'epg'), LOG_DIR].forEach(dir => {
+// 创建所有必要目录
+[OUTPUT_DIR, 
+ path.join(OUTPUT_DIR, 'ipv4'), 
+ path.join(OUTPUT_DIR, 'ipv6'), 
+ path.join(OUTPUT_DIR, 'epg'), 
+ LOG_DIR
+].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -38,7 +43,7 @@ function readConfig() {
 
 const config = readConfig();
 
-// 简单 m3u 解析
+// m3u 解析
 function parseM3U(content) {
   const lines = content.split('\n');
   const channels = [];
@@ -58,14 +63,14 @@ function parseM3U(content) {
   return channels;
 }
 
-// 测速函数
+// 测速
 async function testSpeed(url) {
   const start = Date.now();
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), config.timeout);
 
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       signal: controller.signal,
       headers: { Range: `bytes=0-${config.testBytes - 1}` }
     });
@@ -79,7 +84,7 @@ async function testSpeed(url) {
 
     log('speed_test.log', `${url} | ${speedMbps.toFixed(2)} Mbps | ${isIPv6 ? 'IPv6' : 'IPv4'}`);
     return { speed: speedMbps, ipType: isIPv6 ? 'ipv6' : 'ipv4' };
-  } catch (e) {
+  } catch {
     log('speed_test.log', `${url} | 失败`);
     return { speed: 0, ipType: 'ipv4' };
   }
@@ -91,7 +96,7 @@ async function main() {
 
   let allChannels = [];
 
-  // 读取 subscribe.txt（用户源） + upstream
+  // 1. 读取用户自定义源：subscribe.txt（根目录）
   const subscribePath = 'subscribe.txt';
   let userSources = [];
   if (fs.existsSync(subscribePath)) {
@@ -99,8 +104,10 @@ async function main() {
       .split('\n')
       .map(l => l.trim())
       .filter(l => l && !l.startsWith('#'));
+    log('result.log', `从 subscribe.txt 读取到 ${userSources.length} 个用户源`);
   }
 
+  // 2. 上游公共源（从 config.ini）
   const allSources = [...config.upstreamSources, ...userSources];
 
   for (const url of allSources) {
@@ -116,7 +123,7 @@ async function main() {
     }
   }
 
-  // 简单别名（从 alias.txt 读取）
+  // 别名处理（可选）
   const aliasMap = {};
   if (fs.existsSync(path.join(CONFIG_DIR, 'alias.txt'))) {
     fs.readFileSync(path.join(CONFIG_DIR, 'alias.txt'), 'utf8').split('\n').forEach(line => {
@@ -127,7 +134,7 @@ async function main() {
     });
   }
 
-  // 去重 + 分组 + 测速
+  // 去重 + 测速 + 分组
   const channelMap = new Map();
   for (let ch of allChannels) {
     let name = ch.name.trim();
@@ -147,7 +154,7 @@ async function main() {
 
     tested.sort((a, b) => b.speed - a.speed);
 
-    // 分组（从 group.txt 读取）
+    // 分组
     let group = '其他';
     if (fs.existsSync(path.join(CONFIG_DIR, 'group.txt'))) {
       const rules = fs.readFileSync(path.join(CONFIG_DIR, 'group.txt'), 'utf8').split('\n');
@@ -176,7 +183,7 @@ async function main() {
     }
   }
 
-  // 生成文件
+  // 生成主文件
   let m3uContent = '#EXTM3U\n';
   let txtContent = '';
   resultChannels.forEach(ch => {
@@ -190,19 +197,36 @@ async function main() {
   fs.writeFileSync(path.join(OUTPUT_DIR, 'result.txt'), txtContent);
   fs.writeFileSync(path.join(OUTPUT_DIR, 'result.json'), JSON.stringify(resultChannels, null, 2));
 
-  // 分离 IPv4 / IPv6（简化版，实际可进一步按 ipType 分文件）
+  // IPv4 / IPv6 分离（简化版）
   fs.writeFileSync(path.join(OUTPUT_DIR, 'ipv4/result_ipv4.m3u'), m3uContent);
   fs.writeFileSync(path.join(OUTPUT_DIR, 'ipv6/result_ipv6.m3u'), m3uContent);
 
-  // EPG（简单占位，可自行替换为真实下载）
-  const epgContent = '<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n  <!-- EPG 数据可从 config/epg.txt 下载替换 -->\n</tv>';
+  // 3. 处理 EPG：从根目录 epg.txt 读取链接并下载
+  let epgContent = '<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n  <!-- EPG 数据 -->\n</tv>';
+  const epgTxtPath = 'epg.txt';
+  if (fs.existsSync(epgTxtPath)) {
+    const epgUrls = fs.readFileSync(epgTxtPath, 'utf8')
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l && !l.startsWith('#'));
+    
+    if (epgUrls.length > 0) {
+      try {
+        log('result.log', `下载 EPG: ${epgUrls[0]}`);
+        const res = await fetch(epgUrls[0]);
+        if (res.ok) epgContent = await res.text();
+      } catch (e) {
+        log('result.log', `EPG 下载失败: ${epgUrls[0]}`);
+      }
+    }
+  }
   fs.writeFileSync(path.join(OUTPUT_DIR, 'epg/epg.xml'), epgContent);
 
-  // 统计日志
-  log('statistic.log', `总有效频道: ${resultChannels.length} | IPv4源: ${ipv4Total} | IPv6源: ${ipv6Total}`);
+  // 统计
+  log('statistic.log', `总有效频道: ${resultChannels.length} | IPv4: ${ipv4Total} | IPv6: ${ipv6Total}`);
   log('result.log', '=== 生成完成 ===');
 
-  console.log(`✅ 生成完成！共 ${resultChannels.length} 个频道`);
+  console.log(`✅ 生成完成！共 ${resultChannels.length} 个频道，EPG 已处理`);
 }
 
 main().catch(err => {
