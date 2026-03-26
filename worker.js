@@ -72,10 +72,10 @@ const CONFIG = {
   speedCacheTTL: 1800,   // 缓存时间（秒），默认30分钟
 
   upstreamSources: [
-    "https://iptv-org.github.io/iptv/countries/chn.m3u"
-    "https://m3u.ibert.me/o_all.m3u"
-    "https://m3u.ibert.me/all.m3u"
-    "https://m3u.ibert.me/fmml_ipv6.m3u"
+    "https://iptv-org.github.io/iptv/countries/chn.m3u",    // ← 这里前面必须有逗号！
+    "https://m3u.ibert.me/o_all.m3u",
+    "https://m3u.ibert.me/all.m3u",
+    "https://m3u.ibert.me/fmml_ipv6.m3u"    // ← 最后一行没有逗号！
   ],
 
   groupRules: {
@@ -90,7 +90,7 @@ const CONFIG = {
   aliasMap: {
     "CCTV1": "CCTV-1",
     "CCTV-1 HD": "CCTV-1 高清",
-    "CCTV1 HD": "CCTV-1 高清"
+    "CCTV1 HD": "CCTV-1 高清",
     "CCTV1 4K": "CCTV-1 4K"
   },
 
