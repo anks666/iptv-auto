@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: '0 0 * * *'     # 每天 UTC 00:00（每24小时）
 
-  workflow_dispatch:                      # 手动一键触发
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -28,11 +28,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'npm'
 
       - name: 安装 Wrangler 并部署
         run: |
-          npm install -g wrangler
+          echo "🚀 开始部署 iptv-auto Worker..."
+          npm install -g wrangler@latest
           wrangler deploy --name iptv-auto
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
