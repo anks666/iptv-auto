@@ -1,3 +1,8 @@
 name = "iptv-auto"
 main = "worker.js"
-compatibility_date = "2025-03-01"
+compatibility_date = "2023-10-30"
+
+# 需要在Cloudflare后台创建一个名为 IPTV_DATA 的 KV Namespace，并将 ID 填入下方
+[[kv_namespaces]]
+binding = "IPTV_DATA"
+id = "08b38c4c7a3a4f3eb463ddcbef44e390"
