@@ -1,25 +1,18 @@
-name: Deploy IPTV-Auto to Cloudflare Workers
-
+name: Deploy Worker
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-# 添加环境变量，强制 Actions 提前使用 Node.js 24 运行，消除警告
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    name: Deploy
     steps:
-      # 将 checkout 升级到 v4 (支持更新的 Node 环境)
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Cloudflare Workers
+      - uses: actions/checkout@v4
+      - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          # 强制使用最新版 Wrangler 避免警告导致的中断
+          wranglerVersion: "latest"
