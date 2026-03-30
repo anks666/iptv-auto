@@ -55,7 +55,7 @@ const HTML_TEMPLATE = `
             <div id="testLog" class="h-64 overflow-y-auto bg-gray-900 text-gray-300 p-4 font-mono text-xs mb-6 rounded border-4 border-gray-800"></div>
             <div id="outputSection" class="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300 links-disabled">
                 <h3 class="text-lg font-bold mb-3 text-green-700">📦 测速完成，生成订阅链接：</h3>
-                <div class="space-y-3" id="linksContainer"><div class="text-sm text-gray-400 text-center py-4">测速完成后此处将自动显示链接</div></div>
+                <div class="space-y-3" id="linksContainer"><div class="text-sm text-gray-400 text-center py-4">测速完成后将自动显示链接</div></div>
             </div>
         </div>
         <div id="page3" class="tab-content bg-white p-6 rounded shadow">
@@ -175,4 +175,40 @@ const HTML_TEMPLATE = `
             data.forEach(g => { g.channels.forEach(ch => {
                 const d = document.createElement('div'); d.className = "p-2 bg-white border rounded shadow-sm text-xs hover:border-blue-500 cursor-pointer truncate"; d.innerText = ch.name;
                 d.onclick = () => {
-                    const v = document.getElementById('videoPlayer'); document.getElementById('nowPlaying').
+                    const v = document.getElementById('videoPlayer'); document.getElementById('nowPlaying').innerText = "播放: " + ch.name;
+                    if(Hls.isSupported()) { const h = new Hls(); h.loadSource(ch.urls[0].url); h.attachMedia(v); h.on(Hls.Events.MANIFEST_PARSED, ()=>v.play()); }
+                    else { v.src = ch.urls[0].url; v.play(); }
+                }; c.appendChild(d);
+            }); });
+        }
+    </script>
+</body>
+</html>
+\`;
+export default {
+    async fetch(request, env) {
+        const url = new URL(request.url);
+        if (url.pathname === '/api/ip') return new Response(JSON.stringify({ ip: request.headers.get('cf-connecting-ip'), country: request.headers.get('cf-ipcountry') }));
+        if (url.pathname === '/api/save') {
+            const id = Math.random().toString(36).substring(7);
+            await env.IPTV_DATA.put(id, await request.text(), { expirationTtl: 2592000 });
+            return new Response(JSON.stringify({ id }));
+        }
+        if (url.pathname.startsWith('/sub/')) {
+            const parts = url.pathname.split('/'); const id = parts[2].split('.')[0];
+            const raw = await env.IPTV_DATA.get(id); if (!raw) return new Response("Not Found", { status: 404 });
+            const data = JSON.parse(raw);
+            if (url.pathname.endsWith('.m3u')) {
+                let res = "#EXTM3U\\n";
+                data.forEach(g => g.channels.forEach(ch => ch.urls.forEach(u => res += \`#EXTINF:-1 group-title="\${g.name}",\${ch.name}\\n\${u.url}\\n\`)));
+                return new Response(res);
+            }
+            if (url.pathname.endsWith('.txt')) {
+                let res = "";
+                data.forEach(g => { res += \`\\n\${g.name},#genre#\\n\`; g.channels.forEach(ch => ch.urls.forEach(u => res += \`\${ch.name},\${u.url}\\n\`)); });
+                return new Response(res);
+            }
+        }
+        return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html;charset=UTF-8" } });
+    }
+};
