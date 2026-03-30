@@ -1,39 +1,20 @@
-name: 部署 iptv-auto Worker
+name: Deploy IPTV-Auto to Cloudflare Workers
 
 on:
   push:
-    branches: [ main, master ]
-    paths:
-      - 'worker.js'
-      - 'wrangler.toml'
-  
-  schedule:
-    - cron: '0 19 * * *'     # 北京时间每天凌晨 3:00（UTC 19:00）
-
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
         with:
-          node-version: 24
-
-      - name: 安装 Wrangler 并部署
-        run: |
-          echo "🚀 开始部署 iptv-auto Worker..."
-          npm install -g wrangler@latest
-          wrangler deploy --name iptv-auto
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
