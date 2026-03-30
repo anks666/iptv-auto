@@ -1,4 +1,5 @@
-const HTML_TEMPLATE = `
+// 第1行：必须是 const HTML_PART1 = `
+const HTML_PART1 = `
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -58,6 +59,10 @@ const HTML_TEMPLATE = `
                 <div class="space-y-3" id="linksContainer"><div class="text-sm text-gray-400 text-center py-4">测速完成后将自动显示链接</div></div>
             </div>
         </div>
+`; // 这里闭合 PART1
+
+// 这里开始 PART2，必须是 const HTML_PART2 = `
+const HTML_PART2 = `
         <div id="page3" class="tab-content bg-white p-6 rounded shadow">
             <div class="max-w-4xl mx-auto flex flex-col gap-6 text-center">
                 <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl relative">
@@ -184,7 +189,11 @@ const HTML_TEMPLATE = `
     </script>
 </body>
 </html>
-\`;
+\`; // 这里闭合 PART2
+
+// 这里在代码中拼接
+const HTML_TEMPLATE = HTML_PART1 + HTML_PART2;
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
