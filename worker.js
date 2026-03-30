@@ -1,26 +1,216 @@
 /**
- * IPTV-Auto 稳定版
- * 已处理特殊字符转义，防止 Unterminated string literal 错误
+ * IPTV-Auto 完整功能版 (增强稳定性)
+ * 包含：M3U解析、自动测速、KV存储、订阅转换、HLS预览
  */
 
-const HTML_PART1 = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>IPTV-Auto 管理面板</title><script src="https://cdn.tailwindcss.com"></script><script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script><style>.tab-content{display:none}.tab-content.active{display:block}.list-item-active{background-color:#dbeafe;border-left:4px solid #3b82f6}.scroll-thin::-webkit-scrollbar{width:4px}.scroll-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}.links-disabled{opacity:0.5;filter:grayscale(1);pointer-events:none}</style></head><body class="bg-gray-100 font-sans"><div class="max-w-7xl mx-auto p-4"><h1 class="text-3xl font-bold text-center mb-6 text-blue-600">IPTV-Auto 自动检测与管理</h1><div class="flex border-b mb-4"><button onclick="switchTab('page1')" class="tab-btn px-4 py-2 bg-white border-t border-l border-r rounded-t font-bold text-blue-600" id="btn-page1">1. 源配置</button><button onclick="switchTab('page2')" class="tab-btn px-4 py-2 bg-gray-200 text-gray-600" id="btn-page2">2. 测速导出</button><button onclick="switchTab('page3')" class="tab-btn px-4 py-2 bg-gray-200 text-gray-600" id="btn-page3">3. 播放预览</button></div><div id="page1" class="tab-content active bg-white p-6 rounded shadow"><div class="mb-6"><h2 class="text-xl font-bold mb-2">输入直播源 (M3U 链接或内容)</h2><div class="flex gap-2"><textarea id="sourceInput" class="flex-1 h-24 p-2 border rounded" placeholder="在此粘贴 M3U 链接或内容..."></textarea><div class="w-64"><textarea id="groupTemplate" class="w-full h-24 p-2 border rounded text-xs">{"央视":["CCTV","央视"],"卫视":["卫视"],"高清":["HD","高清"],"4K":["4K"]}</textarea></div></div><button onclick="parseSources()" class="mt-2 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">解析直播源</button></div><div class="grid grid-cols-12 gap-4 h-[400px]"><div class="col-span-3 border rounded bg-gray-50 flex flex-col overflow-hidden"><div class="bg-gray-200 p-2 font-bold text-sm">分组列表</div><div id="groupList" class="flex-1 overflow-y-auto scroll-thin"></div></div><div class="col-span-4 border rounded bg-gray-50 flex flex-col overflow-hidden"><div class="bg-gray-200 p-2 font-bold text-sm">频道名</div><div id="channelListEdit" class="flex-1 overflow-y-auto scroll-thin"></div></div><div class="col-span-5 border rounded bg-gray-50 flex flex-col overflow-hidden"><div class="bg-gray-200 p-2 font-bold text-sm">原始链接</div><div id="urlListEdit" class="flex-1 overflow-y-auto scroll-thin p-2 text-xs"></div></div></div><div class="mt-6 text-center"><button onclick="confirmAndGoToTest()" class="bg-green-600 text-white px-10 py-3 rounded-full font-bold shadow-lg">确认并进入测速</button></div></div>`;
+const HTML_PART1 = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV-Auto 管理面板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .list-item-active { background-color: #dbeafe; border-left: 4px solid #3b82f6; }
+        .scroll-thin::-webkit-scrollbar { width: 4px; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .links-disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-7xl mx-auto p-4">
+        <h1 class="text-3xl font-bold text-center mb-6 text-blue-600">IPTV-Auto 自动检测与管理</h1>
+        <div class="flex border-b mb-4">
+            <button onclick="switchTab('page1')" class="tab-btn px-4 py-2 bg-white border-t border-l border-r rounded-t font-bold text-blue-600" id="btn-page1">1. 源配置</button>
+            <button onclick="switchTab('page2')" class="tab-btn px-4 py-2 bg-gray-200 text-gray-600" id="btn-page2">2. 测速导出</button>
+            <button onclick="switchTab('page3')" class="tab-btn px-4 py-2 bg-gray-200 text-gray-600" id="btn-page3">3. 播放预览</button>
+        </div>
+        <div id="page1" class="tab-content active bg-white p-6 rounded shadow">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-2">输入直播源 (M3U 链接或内容)</h2>
+                <div class="flex gap-2">
+                    <textarea id="sourceInput" class="flex-1 h-24 p-2 border rounded" placeholder="在此粘贴 M3U 内容..."></textarea>
+                    <div class="w-64">
+                        <textarea id="groupTemplate" class="w-full h-24 p-2 border rounded text-xs">{"央视":["CCTV","央视"],"卫视":["卫视"],"高清":["HD","高清"],"4K":["4K"]}</textarea>
+                    </div>
+                </div>
+                <button onclick="parseSources()" class="mt-2 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">解析直播源</button>
+            </div>
+            <div class="grid grid-cols-12 gap-4 h-[400px]">
+                <div class="col-span-3 border rounded bg-gray-50 flex flex-col overflow-hidden"><div id="groupList" class="flex-1 overflow-y-auto scroll-thin"></div></div>
+                <div class="col-span-4 border rounded bg-gray-50 flex flex-col overflow-hidden"><div id="channelListEdit" class="flex-1 overflow-y-auto scroll-thin"></div></div>
+                <div class="col-span-5 border rounded bg-gray-50 flex flex-col overflow-hidden"><div id="urlListEdit" class="flex-1 overflow-y-auto scroll-thin p-2 text-xs"></div></div>
+            </div>
+            <div class="mt-6 text-center"><button onclick="confirmAndGoToTest()" class="bg-green-600 text-white px-10 py-3 rounded-full font-bold shadow-lg">确认并进入测速</button></div>
+        </div>
+`;
 
-const HTML_PART2 = `<div id="page2" class="tab-content bg-white p-6 rounded shadow"><div id="networkInfo" class="mb-4 text-gray-700 font-bold p-2 bg-blue-50 rounded text-center">正在读取网络...</div><div class="flex flex-wrap gap-4 mb-6 items-end justify-center"><div><label class="block text-xs text-gray-500 mb-1">保留 IPv4</label><input type="number" id="ipv4Count" value="5" class="border p-2 rounded w-24"></div><div><label class="block text-xs text-gray-500 mb-1">保留 IPv6</label><input type="number" id="ipv6Count" value="5" class="border p-2 rounded w-24"></div><button id="startTestBtn" onclick="startTesting()" class="bg-green-500 text-white px-8 py-2 rounded font-bold">开始测速</button><button id="stopTestBtn" onclick="stopTesting()" class="bg-red-500 text-white px-8 py-2 rounded font-bold hidden">停止</button></div><div class="mb-2 flex justify-between text-sm font-medium"><span>进度</span><span id="progressText">0 / 0</span></div><div class="w-full bg-gray-200 rounded-full h-4 mb-4"><div id="progressBar" class="bg-blue-600 h-4 rounded-full" style="width: 0%"></div></div><div id="testLog" class="h-64 overflow-y-auto bg-gray-900 text-gray-300 p-4 font-mono text-xs mb-6 rounded"></div><div id="outputSection" class="bg-gray-50 p-4 rounded-lg border border-dashed links-disabled"><h3 class="text-lg font-bold mb-3 text-green-700">📦 订阅链接：</h3><div class="space-y-3" id="linksContainer"></div></div></div><div id="page3" class="tab-content bg-white p-6 rounded shadow"><div class="max-w-4xl mx-auto flex flex-col gap-6 text-center"><div class="aspect-video bg-black rounded-xl overflow-hidden relative"><video id="videoPlayer" controls class="w-full h-full"></video><div id="nowPlaying" class="absolute bottom-12 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">未在播放</div></div><div class="border rounded-lg bg-gray-50 flex flex-col h-64 overflow-hidden"><div id="channelListPlayer" class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-1 p-1"></div></div></div></div></div><script>let rawGroups=[];let isTesting=false;let currentGroupIndex=-1;function switchTab(t){document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(el=>{el.className='tab-btn px-4 py-2 bg-gray-200 text-gray-600'});document.getElementById(t).classList.add('active');document.getElementById('btn-'+t).className='tab-btn px-4 py-2 bg-white border-t border-l border-r rounded-t font-bold text-blue-600'}async function parseSources(){let text=document.getElementById('sourceInput').value.trim();const templates=JSON.parse(document.getElementById('groupTemplate').value);if(!text)return;if(text.startsWith('http')){try{const res=await fetch(text);text=await res.text()}catch(e){alert("请手动粘贴内容");return}}const groupMap={};let tempN,tempG;text.split('\\n').forEach(line=>{line=line.trim();if(line.startsWith('#EXTINF')){tempN=(line.match(/,(.*)$/)||[])[1];tempG=(line.match(/group-title="(.*?)"/)||[])[1]}else if(line.startsWith('http')){let name=tempN||"未知",g="其他";for(let k in templates)if(templates[k].some(key=>name.includes(key)))g=k;if(g==="其他")g=tempG||"其他";if(!groupMap[g])groupMap[g]={};if(!groupMap[g][name])groupMap[g][name]={urls:[]};const type=line.includes('[')||(line.match(/:/g)||[]).length>2?'V6':'V4';groupMap[g][name].urls.push({url:line,type})}});rawGroups=Object.keys(groupMap).map(k=>({name:k,channels:groupMap[k]}));renderGroups()}function renderGroups(){const c=document.getElementById('groupList');c.innerHTML="";rawGroups.forEach((g,i)=>{const d=document.createElement('div');d.className=\`p-2 border-b cursor-pointer hover:bg-blue-50 \${currentGroupIndex===i?'list-item-active':''}\`;d.innerHTML=\`<span>\${g.name}</span>\`;d.onclick=()=>{currentGroupIndex=i;renderGroups();renderChannelsEdit()};c.appendChild(d)})}function renderChannelsEdit(){const c=document.getElementById('channelListEdit');c.innerHTML="";const channels=rawGroups[currentGroupIndex].channels;for(let n in channels){const d=document.createElement('div');d.className="p-2 border-b cursor-pointer hover:bg-gray-100 text-sm";d.innerText=n;d.onclick=()=>{document.getElementById('urlListEdit').innerHTML=channels[n].urls.map(u=>\`<div class="mb-1 p-1 bg-white border rounded"><span class="text-blue-500 font-bold">\${u.type}</span> \${u.url}</div>\`).join('')};c.appendChild(d)}}function confirmAndGoToTest(){switchTab('page2');fetchNetworkInfo()}async function fetchNetworkInfo(){const res=await fetch('/api/ip');const d=await res.json();document.getElementById('networkInfo').innerText=\`当前出口: \${d.ip} (\${d.country})\`}function stopTesting(){isTesting=false;document.getElementById('testLog').innerText+="\\n🛑 已停止"}async function startTesting(){isTesting=true;document.getElementById('startTestBtn').classList.add('hidden');document.getElementById('stopTestBtn').classList.remove('hidden');const v4c=parseInt(document.getElementById('ipv4Count').value),v6c=parseInt(document.getElementById('ipv6Count').value);const log=document.getElementById('testLog');log.innerHTML="🚀 测速中...\\n";let tasks=[];rawGroups.forEach(g=>{for(let n in g.channels)g.channels[n].urls.forEach(u=>tasks.push({g:g.name,n,u}))});const total=tasks.length;for(let i=0;i<tasks.length;i++){if(!isTesting)break;const task=tasks[i],start=Date.now();try{const ctrl=new AbortController(),tid=setTimeout(()=>ctrl.abort(),2000);await fetch(task.u.url,{mode:'no-cors',signal:ctrl.signal});clearTimeout(tid);task.u.time=Date.now()-start}catch(e){task.u.time=9999}document.getElementById('progressText').innerText=\`\${i+1}/\${total}\`;document.getElementById('progressBar').style.width=\`\${((i+1)/total)*100}%\`;log.innerText+=\`[\${task.u.time}ms] \${task.n}\\n\`;log.scrollTop=log.scrollHeight}if(isTesting){const final=[];rawGroups.forEach(g=>{const chs=[];for(let n in g.channels){const s=g.channels[n].urls.sort((a,b)=>a.time-b.time);const f=[...s.filter(u=>u.type==='V4'&&u.time<9999).slice(0,v4c),...s.filter(u=>u.type==='V6'&&u.time<9999).slice(0,v6c)];if(f.length>0)chs.push({name:n,urls:f})}if(chs.length>0)final.push({name:g.name,channels:chs})});const res=await fetch('/api/save',{method:'POST',body:JSON.stringify(final)});const{id}=await res.json();renderLinks(id);renderPlayer(final);document.getElementById('outputSection').classList.remove('links-disabled')}document.getElementById('startTestBtn').classList.remove('hidden');document.getElementById('stopTestBtn').classList.add('hidden')}function renderLinks(id){const b=window.location.origin;const items=[{k:'M3U',u:\`\${b}/sub/\${id}.m3u\`},{k:'TXT',u:\`\${b}/sub/\${id}.txt\`}];document.getElementById('linksContainer').innerHTML=items.map(i=>\`<div class="flex items-center gap-2"><span class="w-10 font-bold text-xs">\${i.k}:</span><input class="flex-1 border p-2 text-xs rounded" value="\${i.u}" readonly><button onclick="navigator.clipboard.writeText('\${i.u}');alert('已复制')" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">复制</button></div>\`).join('')}function renderPlayer(data){const c=document.getElementById('channelListPlayer');c.innerHTML="";data.forEach(g=>{g.channels.forEach(ch=>{const d=document.createElement('div');d.className="p-1 bg-white border rounded text-xs hover:border-blue-500 cursor-pointer truncate";d.innerText=ch.name;d.onclick=()=>{const v=document.getElementById('videoPlayer');document.getElementById('nowPlaying').innerText="播放:"+ch.name;if(Hls.isSupported()){const h=new Hls();h.loadSource(ch.urls[0].url);h.attachMedia(v);h.on(Hls.Events.MANIFEST_PARSED,()=>v.play())}else{v.src=ch.urls[0].url;v.play()}};c.appendChild(d)})})}</script></body></html>`;
+const HTML_PART2 = `
+        <div id="page2" class="tab-content bg-white p-6 rounded shadow">
+            <div id="networkInfo" class="mb-4 text-gray-700 font-bold p-2 bg-blue-50 rounded text-center">读取网络中...</div>
+            <div class="flex flex-wrap gap-4 mb-6 items-end justify-center">
+                <div><label class="block text-xs text-gray-500 mb-1">IPv4数</label><input type="number" id="ipv4Count" value="5" class="border p-2 rounded w-24"></div>
+                <div><label class="block text-xs text-gray-500 mb-1">IPv6数</label><input type="number" id="ipv6Count" value="5" class="border p-2 rounded w-24"></div>
+                <button id="startTestBtn" onclick="startTesting()" class="bg-green-500 text-white px-8 py-2 rounded font-bold">开始测速</button>
+                <button id="stopTestBtn" onclick="stopTesting()" class="bg-red-500 text-white px-8 py-2 rounded font-bold hidden">停止</button>
+            </div>
+            <div class="mb-2 flex justify-between text-sm font-medium"><span>进度</span><span id="progressText">0 / 0</span></div>
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-4"><div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all" style="width: 0%"></div></div>
+            <div id="testLog" class="h-64 overflow-y-auto bg-gray-900 text-gray-300 p-4 font-mono text-xs mb-6 rounded"></div>
+            <div id="outputSection" class="bg-gray-50 p-4 rounded-lg border border-dashed links-disabled">
+                <h3 class="text-lg font-bold mb-3 text-green-700">📦 订阅链接：</h3>
+                <div class="space-y-3" id="linksContainer"></div>
+            </div>
+        </div>
+        <div id="page3" class="tab-content bg-white p-6 rounded shadow">
+            <div class="max-w-4xl mx-auto flex flex-col gap-6">
+                <div class="aspect-video bg-black rounded-xl overflow-hidden relative">
+                    <video id="videoPlayer" controls class="w-full h-full"></video>
+                    <div id="nowPlaying" class="absolute bottom-12 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">未播放</div>
+                </div>
+                <div class="border rounded-lg bg-gray-50 flex flex-col h-64 overflow-hidden">
+                    <div id="channelListPlayer" class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-1 p-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let rawGroups=[]; let isTesting=false; let currentGroupIndex=-1;
+        function switchTab(t){
+            document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el=>{el.className='tab-btn px-4 py-2 bg-gray-200 text-gray-600'});
+            document.getElementById(t).classList.add('active');
+            document.getElementById('btn-'+t).className='tab-btn px-4 py-2 bg-white border-t border-l border-r rounded-t font-bold text-blue-600';
+        }
+        async function parseSources(){
+            let text=document.getElementById('sourceInput').value.trim();
+            const templates=JSON.parse(document.getElementById('groupTemplate').value);
+            if(!text) return;
+            if(text.startsWith('http')){
+                try{const res=await fetch(text); text=await res.text();}catch(e){alert("请手动粘贴内容");return;}
+            }
+            const groupMap={}; let tempN,tempG;
+            text.split('\\n').forEach(line=>{
+                line=line.trim();
+                if(line.startsWith('#EXTINF')){
+                    tempN=(line.match(/,(.*)$/)||[])[1];
+                    tempG=(line.match(/group-title="(.*?)"/)||[])[1];
+                }else if(line.startsWith('http')){
+                    let name=tempN||"未知", g="其他";
+                    for(let k in templates) if(templates[k].some(key=>name.includes(keyword=>name.includes(key)))) g=k;
+                    if(g==="其他") g=tempG||"其他";
+                    if(!groupMap[g]) groupMap[g]={};
+                    if(!groupMap[g][name]) groupMap[g][name]={urls:[]};
+                    const type=line.includes('[')||(line.match(/:/g)||[]).length>2?'V6':'V4';
+                    groupMap[g][name].urls.push({url:line,type});
+                }
+            });
+            rawGroups=Object.keys(groupMap).map(k=>({name:k,channels:groupMap[k]}));
+            renderGroups();
+        }
+        function renderGroups(){
+            const c=document.getElementById('groupList'); c.innerHTML="";
+            rawGroups.forEach((g,i)=>{
+                const d=document.createElement('div');
+                d.className=\`p-2 border-b cursor-pointer hover:bg-blue-50 \${currentGroupIndex===i?'list-item-active':''}\`;
+                d.innerHTML=\`<span>\${g.name}</span>\`;
+                d.onclick=()=>{currentGroupIndex=i; renderGroups(); renderChannelsEdit();};
+                c.appendChild(d);
+            });
+        }
+        function renderChannelsEdit(){
+            const c=document.getElementById('channelListEdit'); c.innerHTML="";
+            const channels=rawGroups[currentGroupIndex].channels;
+            for(let n in channels){
+                const d=document.createElement('div'); d.className="p-2 border-b cursor-pointer hover:bg-gray-100 text-sm"; d.innerText=n;
+                d.onclick=()=>{document.getElementById('urlListEdit').innerHTML=channels[n].urls.map(u=>\`<div class="mb-1 p-1 bg-white border rounded"><span class="text-blue-500 font-bold">\${u.type}</span> \${u.url}</div>\`).join('');};
+                c.appendChild(d);
+            }
+        }
+        function confirmAndGoToTest(){ switchTab('page2'); fetchNetworkInfo(); }
+        async function fetchNetworkInfo(){
+            const res=await fetch('/api/ip'); const d=await res.json();
+            document.getElementById('networkInfo').innerText=\`当前出口: \${d.ip} (\${d.country})\`;
+        }
+        function stopTesting(){ isTesting=false; document.getElementById('testLog').innerText+="\\n🛑 已停止"; }
+        async function startTesting(){
+            isTesting=true; document.getElementById('startTestBtn').classList.add('hidden'); document.getElementById('stopTestBtn').classList.remove('hidden');
+            const v4c=parseInt(document.getElementById('ipv4Count').value), v6c=parseInt(document.getElementById('ipv6Count').value);
+            const log=document.getElementById('testLog'); log.innerHTML="🚀 测速中...\\n";
+            let tasks=[]; rawGroups.forEach(g=>{for(let n in g.channels) g.channels[n].urls.forEach(u=>tasks.push({g:g.name,n,u}));});
+            const total=tasks.length;
+            for(let i=0; i<tasks.length; i++){
+                if(!isTesting) break;
+                const task=tasks[i], start=Date.now();
+                try{
+                    const ctrl=new AbortController(), tid=setTimeout(()=>ctrl.abort(), 2000);
+                    await fetch(task.u.url,{mode:'no-cors',signal:ctrl.signal}); clearTimeout(tid);
+                    task.u.time=Date.now()-start;
+                }catch(e){task.u.time=9999;}
+                document.getElementById('progressText').innerText=\`\${i+1}/\${total}\`;
+                document.getElementById('progressBar').style.width=\`\${((i+1)/total)*100}%\`;
+                log.innerText+=\`[\${task.u.time}ms] \${task.n}\\n\`; log.scrollTop=log.scrollHeight;
+            }
+            if(isTesting){
+                const final=[];
+                rawGroups.forEach(g=>{
+                    const chs=[]; for(let n in g.channels){
+                        const s=g.channels[n].urls.sort((a,b)=>a.time-b.time);
+                        const f=[...s.filter(u=>u.type==='V4'&&u.time<9999).slice(0,v4c), ...s.filter(u=>u.type==='V6'&&u.time<9999).slice(0,v6c)];
+                        if(f.length>0) chs.push({name:n,urls:f});
+                    }
+                    if(chs.length>0) final.push({name:g.name,channels:chs});
+                });
+                const res=await fetch('/api/save',{method:'POST',body:JSON.stringify(final)});
+                const{id}=await res.json(); renderLinks(id); renderPlayer(final);
+                document.getElementById('outputSection').classList.remove('links-disabled');
+            }
+            document.getElementById('startTestBtn').classList.remove('hidden'); document.getElementById('stopTestBtn').classList.add('hidden');
+        }
+        function renderLinks(id){
+            const b=window.location.origin; const items=[{k:'M3U',u:\`\${b}/sub/\${id}.m3u\`},{k:'TXT',u:\`\${b}/sub/\${id}.txt\`}];
+            document.getElementById('linksContainer').innerHTML=items.map(i=>\`<div class="flex items-center gap-2"><span class="w-10 font-bold text-xs text-gray-500">\${i.k}:</span><input class="flex-1 border p-2 text-xs rounded bg-white" value="\${i.u}" readonly><button onclick="navigator.clipboard.writeText('\${i.u}');alert('已复制')" class="bg-blue-600 text-white px-4 py-2 rounded text-xs">复制</button></div>\`).join('');
+        }
+        function renderPlayer(data){
+            const c=document.getElementById('channelListPlayer'); c.innerHTML="";
+            data.forEach(g=>{ g.channels.forEach(ch=>{
+                const d=document.createElement('div'); d.className="p-1 bg-white border rounded text-xs hover:border-blue-500 cursor-pointer truncate"; d.innerText=ch.name;
+                d.onclick=()=>{
+                    const v=document.getElementById('videoPlayer'); document.getElementById('nowPlaying').innerText="播放:"+ch.name;
+                    if(Hls.isSupported()){ const h=new Hls(); h.loadSource(ch.urls[0].url); h.attachMedia(v); h.on(Hls.Events.MANIFEST_PARSED,()=>v.play()); }
+                    else { v.src=ch.urls[0].url; v.play(); }
+                }; c.appendChild(d);
+            });});
+        }
+    </script>
+</body>
+</html>
+`;
 
 const HTML_TEMPLATE = HTML_PART1 + HTML_PART2;
 
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
+        // API: 获取 IP
         if (url.pathname === '/api/ip') return new Response(JSON.stringify({ ip: request.headers.get('cf-connecting-ip'), country: request.headers.get('cf-ipcountry') }));
+        
+        // API: 保存数据
         if (url.pathname === '/api/save') {
             const id = Math.random().toString(36).substring(7);
             await env.IPTV_DATA.put(id, await request.text(), { expirationTtl: 2592000 });
             return new Response(JSON.stringify({ id }));
         }
+
+        // API: 订阅导出
         if (url.pathname.startsWith('/sub/')) {
             const id = url.pathname.split('/')[2].split('.')[0];
-            const raw = await env.IPTV_DATA.get(id); if (!raw) return new Response("Not Found", { status: 404 });
+            const raw = await env.IPTV_DATA.get(id);
+            if (!raw) return new Response("Not Found", { status: 404 });
             const data = JSON.parse(raw);
             if (url.pathname.endsWith('.m3u')) {
                 let res = "#EXTM3U\n";
@@ -29,10 +219,15 @@ export default {
             }
             if (url.pathname.endsWith('.txt')) {
                 let res = "";
-                data.forEach(g => { res += `\n${g.name},#genre#\n`; g.channels.forEach(ch => ch.urls.forEach(u => res += `${ch.name},${u.url}\n`)); });
+                data.forEach(g => {
+                    res += `\n${g.name},#genre#\n`;
+                    g.channels.forEach(ch => ch.urls.forEach(u => res += `${ch.name},${u.url}\n`));
+                });
                 return new Response(res);
             }
         }
+
+        // 返回主界面
         return new Response(HTML_TEMPLATE, { headers: { "content-type": "text/html;charset=UTF-8" } });
     }
 };
