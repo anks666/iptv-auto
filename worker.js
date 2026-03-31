@@ -1,6 +1,6 @@
 /**
- * IPTV-Auto 终极旗舰版 v4.0 (彻底修复 1101，纯本地缓存版)
- * 包含完整的 4 个页面 UI 及所有操作逻辑
+ * IPTV-Auto 深度管理面板 v4.1 (完整解析逻辑补全版)
+ * 纯本地缓存 + CORS 代理，彻底杜绝 1101 错误，解析功能 100% 恢复
  */
 
 const FULL_HTML = `<!DOCTYPE html>
@@ -8,7 +8,7 @@ const FULL_HTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV-Auto 深度管理面板 v4.0</title>
+    <title>IPTV-Auto 深度管理面板 v4.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-btn { transition: all 0.2s; }
@@ -25,7 +25,7 @@ const FULL_HTML = `<!DOCTYPE html>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
 
 <div class="max-w-[1600px] mx-auto p-4">
-    <h1 class="text-3xl font-black text-center mb-6 text-blue-600 tracking-wider">IPTV-Auto 深度管理面板 v4.0</h1>
+    <h1 class="text-3xl font-black text-center mb-6 text-blue-600 tracking-wider">IPTV-Auto 深度管理面板 v4.1</h1>
     
     <div class="flex border-b mb-4 bg-white rounded-t-xl px-2 pt-2 shadow-sm">
         <button onclick="switchTab('page1')" id="btn-page1" class="tab-btn px-6 py-3 font-bold rounded-t-lg text-blue-700 bg-white shadow">1. 源与分组配置</button>
@@ -42,11 +42,13 @@ const FULL_HTML = `<!DOCTYPE html>
                     <input type="text" id="epgUrls" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm" placeholder="https://epg.example.com/e.xml">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">直播源 (M3U 链接或文本)</label>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">直播源 (M3U 链接或文本，支持多个链接以逗号隔开)</label>
                     <textarea id="sourceInput" class="w-full h-32 p-3 border rounded-lg text-sm bg-slate-50 font-mono scroll-thin" placeholder="在此粘贴..."></textarea>
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="parseData()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700">🚀 解析并合并</button>
+                    <button id="parseBtn" onclick="parseData()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 flex items-center gap-2">
+                        <span>🚀 解析并合并</span>
+                    </button>
                     <button onclick="applyTmpl()" class="bg-white text-indigo-600 border border-indigo-200 px-6 py-2 rounded-lg text-sm font-bold hover:bg-indigo-50">🔄 重新应用分组</button>
                     <button onclick="clearData()" class="bg-slate-100 text-slate-500 px-6 py-2 rounded-lg text-sm font-bold ml-auto hover:bg-red-50 hover:text-red-600">🧹 清空</button>
                 </div>
@@ -63,18 +65,10 @@ const FULL_HTML = `<!DOCTYPE html>
                 <div class="bg-slate-200 p-2 border-b flex justify-between items-center">
                     <span class="text-xs font-bold text-slate-700 flex items-center gap-1">📁 分组控制</span>
                     <div class="flex gap-1">
-                        <button onclick="openGroupModal()" class="icon-btn" title="添加分组及关键词">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
-                        </button>
-                        <button onclick="moveItem('group', -1)" class="icon-btn" title="上移分组">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10l8-8 8 8M12 2v20"></path></svg>
-                        </button>
-                        <button onclick="moveItem('group', 1)" class="icon-btn" title="下移分组">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 14l8 8 8-8M12 22V2"></path></svg>
-                        </button>
-                        <button onclick="deleteItem('group')" class="icon-btn icon-danger text-red-500" title="删除分组">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
+                        <button onclick="openGroupModal()" class="icon-btn" title="添加分组及关键词"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg></button>
+                        <button onclick="moveItem('group', -1)" class="icon-btn" title="上移分组"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10l8-8 8 8M12 2v20"></path></svg></button>
+                        <button onclick="moveItem('group', 1)" class="icon-btn" title="下移分组"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 14l8 8 8-8M12 22V2"></path></svg></button>
+                        <button onclick="deleteItem('group')" class="icon-btn icon-danger text-red-500" title="删除分组"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
                 </div>
                 <div id="groupList" class="flex-1 overflow-y-auto scroll-thin p-1 space-y-1"></div>
@@ -84,21 +78,11 @@ const FULL_HTML = `<!DOCTYPE html>
                 <div class="bg-slate-200 p-2 border-b flex justify-between items-center">
                     <span class="text-xs font-bold text-slate-700 flex items-center gap-1">📺 频道列表</span>
                     <div class="flex gap-1">
-                        <button onclick="sortChannels()" class="icon-btn" title="按A-Z自动排序">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
-                        </button>
-                        <button onclick="moveItem('channel', -1)" class="icon-btn" title="上移频道">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10l8-8 8 8M12 2v20"></path></svg>
-                        </button>
-                        <button onclick="moveItem('channel', 1)" class="icon-btn" title="下移频道">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 14l8 8 8-8M12 22V2"></path></svg>
-                        </button>
-                        <button onclick="mergeChannels()" class="icon-btn text-indigo-600" title="合并频道">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                        </button>
-                        <button onclick="deleteItem('channel')" class="icon-btn icon-danger text-red-500" title="删除频道">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
+                        <button onclick="sortChannels()" class="icon-btn" title="按A-Z自动排序"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg></button>
+                        <button onclick="moveItem('channel', -1)" class="icon-btn" title="上移频道"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 10l8-8 8 8M12 2v20"></path></svg></button>
+                        <button onclick="moveItem('channel', 1)" class="icon-btn" title="下移频道"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 14l8 8 8-8M12 22V2"></path></svg></button>
+                        <button onclick="mergeChannels()" class="icon-btn text-indigo-600" title="合并频道"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg></button>
+                        <button onclick="deleteItem('channel')" class="icon-btn icon-danger text-red-500" title="删除频道"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
                 </div>
                 <div id="channelList" class="flex-1 overflow-y-auto scroll-thin p-1 space-y-1"></div>
@@ -129,20 +113,9 @@ const FULL_HTML = `<!DOCTYPE html>
         </div>
     </div>
 
-    <div id="page2" class="hidden bg-white p-12 rounded-b-xl shadow border text-center text-slate-500">
-        <h2 class="text-2xl font-bold mb-4">测速与净化导出 (模块加载中...)</h2>
-        <p>在 Page 1 完成源配置后，可在此执行批量测速并导出最新 M3U 订阅。</p>
-    </div>
-
-    <div id="page3" class="hidden bg-slate-900 p-12 rounded-b-xl shadow border text-center text-slate-400 min-h-[500px]">
-        <h2 class="text-2xl font-bold mb-4">播放信息校准 (HLS Player)</h2>
-        <p>选择频道以验证视频编码、分辨率及实时码率。</p>
-    </div>
-
-    <div id="page4" class="hidden bg-white p-12 rounded-b-xl shadow border text-center text-slate-500">
-        <h2 class="text-2xl font-bold mb-4">节目指南 (EPG) 预览</h2>
-        <p>实时拉取 XMLTV 数据进行核对。</p>
-    </div>
+    <div id="page2" class="hidden bg-white p-12 rounded-b-xl shadow border text-center text-slate-500"><h2 class="text-2xl font-bold mb-4">测速与净化导出 (正在开发)</h2></div>
+    <div id="page3" class="hidden bg-slate-900 p-12 rounded-b-xl shadow border text-center text-slate-400 min-h-[500px]"><h2 class="text-2xl font-bold mb-4">播放信息校准 (正在开发)</h2></div>
+    <div id="page4" class="hidden bg-white p-12 rounded-b-xl shadow border text-center text-slate-500"><h2 class="text-2xl font-bold mb-4">节目指南 (EPG) 预览 (正在开发)</h2></div>
 
     <div id="addModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-96 border">
@@ -163,18 +136,16 @@ const FULL_HTML = `<!DOCTYPE html>
             </div>
         </div>
     </div>
-
 </div>
 
 <script>
-    // 核心数据结构
     let data = []; 
     let activeGroup = -1;
     let activeChannel = -1;
+    window.tempChannels = []; // 临时保存解析出来的原始频道
     const defaultTemplate = { "央视": ["CCTV", "央视"], "卫视": ["卫视"], "其他": [] };
 
     window.onload = () => {
-        // 从本地缓存加载，永不崩溃
         const cached = localStorage.getItem('iptv_auto_v4');
         if(cached) {
             data = JSON.parse(cached);
@@ -191,7 +162,6 @@ const FULL_HTML = `<!DOCTYPE html>
         localStorage.setItem('iptv_auto_tmpl', document.getElementById('groupTemplate').value);
     }
 
-    // --- 需求 1: 页面切换联动高亮 ---
     function switchTab(id) {
         ['page1', 'page2', 'page3', 'page4'].forEach(page => {
             document.getElementById(page).classList.add('hidden');
@@ -200,12 +170,10 @@ const FULL_HTML = `<!DOCTYPE html>
             btn.classList.add('text-slate-500', 'bg-transparent');
         });
         document.getElementById(id).classList.remove('hidden');
-        const activeBtn = document.getElementById('btn-' + id);
-        activeBtn.classList.remove('text-slate-500', 'bg-transparent');
-        activeBtn.classList.add('text-blue-700', 'bg-white', 'shadow');
+        document.getElementById('btn-' + id).classList.remove('text-slate-500', 'bg-transparent');
+        document.getElementById('btn-' + id).classList.add('text-blue-700', 'bg-white', 'shadow');
     }
 
-    // --- 需求 2: JSON 完美格式化 ---
     function formatJson() {
         const el = document.getElementById('groupTemplate');
         try {
@@ -213,14 +181,131 @@ const FULL_HTML = `<!DOCTYPE html>
             let out = "{\\n";
             const keys = Object.keys(obj);
             keys.forEach((k, i) => {
-                // 强制数组成为单行字符串，实现同行显示
-                const arrStr = JSON.stringify(obj[k]);
-                out += \`  "\${k}": \${arrStr}\${i < keys.length - 1 ? ',' : ''}\\n\`;
+                out += \`  "\${k}": \${JSON.stringify(obj[k])}\${i < keys.length - 1 ? ',' : ''}\\n\`;
             });
             out += "}";
             el.value = out;
             saveData();
         } catch(e) {}
+    }
+
+    // --- 核心修复：解析功能 ---
+    async function parseData() {
+        const input = document.getElementById('sourceInput').value.trim();
+        if(!input) return alert('请输入直播源链接或 M3U 文本！');
+        
+        const btn = document.getElementById('parseBtn');
+        btn.innerHTML = '<span>⏳ 正在解析...</span>';
+        
+        let rawText = '';
+        // 智能判断是URL列表还是直接文本
+        if(input.startsWith('http')) {
+            const urls = input.split(',').map(s=>s.trim()).filter(s=>s);
+            for(const url of urls) {
+                try {
+                    // 通过后端的 proxy 拉取远程数据解决 CORS 问题
+                    const res = await fetch('/proxy?url=' + encodeURIComponent(url));
+                    if(res.ok) {
+                        rawText += await res.text() + '\\n';
+                    }
+                } catch(e) {
+                    console.error('Fetch failed:', url);
+                }
+            }
+        } else {
+            rawText = input;
+        }
+
+        // 解析 M3U 与 TXT 格式
+        const lines = rawText.split('\\n').map(l => l.trim()).filter(l => l);
+        window.tempChannels = [];
+        let curName = '', curGroup = '未分组';
+
+        for(let i=0; i<lines.length; i++) {
+            const line = lines[i];
+            if(line.startsWith('#EXTINF')) {
+                const gMatch = line.match(/group-title="([^"]+)"/);
+                if(gMatch) curGroup = gMatch[1];
+                const parts = line.split(',');
+                if(parts.length > 1) curName = parts[parts.length-1].trim();
+            } else if(line.startsWith('http')) {
+                if(curName) {
+                    window.tempChannels.push({ name: curName, group: curGroup, url: line });
+                    curName = ''; curGroup = '未分组';
+                }
+            } else if(line.includes(',') && !line.startsWith('#')) {
+                // 处理纯文本 TXT 格式: 分组,频道名,URL 或 频道名,URL
+                const parts = line.split(',');
+                if(parts.length >= 2) {
+                    const url = parts.pop().trim();
+                    const name = parts.pop().trim();
+                    const group = parts.length > 0 ? parts[0].trim() : '未分组';
+                    if(url.startsWith('http')) {
+                         window.tempChannels.push({ name: name, group: group, url: url });
+                    }
+                }
+            }
+        }
+        
+        btn.innerHTML = '<span>🚀 解析并合并</span>';
+        if(window.tempChannels.length > 0) {
+            applyTmpl();
+        } else {
+            alert('未能解析到任何有效频道信息，请检查输入格式。');
+        }
+    }
+
+    // --- 核心修复：模板应用 ---
+    function applyTmpl() {
+        if(!window.tempChannels || window.tempChannels.length === 0) return alert('没有解析到源数据。');
+        
+        let tmpl = {};
+        try { tmpl = JSON.parse(document.getElementById('groupTemplate').value); } 
+        catch(e) { return alert('JSON 模板格式错误，请检查！'); }
+        
+        let newData = [];
+        Object.keys(tmpl).forEach(gName => newData.push({ name: gName, channels: [] }));
+        
+        // 确保有一个“其他”分组托底
+        let otherIdx = newData.findIndex(g => g.name === '其他');
+        if(otherIdx === -1) {
+            newData.push({ name: '其他', channels: [] });
+            otherIdx = newData.length - 1;
+        }
+
+        window.tempChannels.forEach(c => {
+            let matched = false;
+            for(let i=0; i<newData.length; i++) {
+                const gName = newData[i].name;
+                const keys = tmpl[gName] || [];
+                // 只要原有分组名匹配，频道名匹配，或者命中关键词，就归类到该组
+                if(c.group === gName || c.name.includes(gName) || keys.some(k => c.name.includes(k) || c.group.includes(k))) {
+                    let existC = newData[i].channels.find(xc => xc.name === c.name);
+                    if(existC) {
+                        if(!existC.urls.includes(c.url)) existC.urls.push(c.url);
+                    } else {
+                        newData[i].channels.push({ name: c.name, epgId: '', urls: [c.url] });
+                    }
+                    matched = true;
+                    break; 
+                }
+            }
+            if(!matched) {
+                let existC = newData[otherIdx].channels.find(xc => xc.name === c.name);
+                if(existC) {
+                    if(!existC.urls.includes(c.url)) existC.urls.push(c.url);
+                } else {
+                    newData[otherIdx].channels.push({ name: c.name, epgId: '', urls: [c.url] });
+                }
+            }
+        });
+        
+        data = newData;
+        activeGroup = 0;
+        activeChannel = -1;
+        renderG();
+        saveData();
+        alert(\`解析与重新分组成功！共处理并去重合并了 \${window.tempChannels.length} 个直播源链接。\`);
     }
 
     // --- 渲染逻辑 ---
@@ -239,7 +324,6 @@ const FULL_HTML = `<!DOCTYPE html>
         if(activeGroup < 0) return;
         const el = document.getElementById('channelList');
         const channels = data[activeGroup].channels;
-        // 需求 6: 频道多选框
         el.innerHTML = channels.map((c, i) => \`
             <div onclick="selectC(\${i}, event)" class="p-2 border-b cursor-pointer text-xs flex items-center gap-2 \${activeChannel === i ? 'list-item-active' : 'hover:bg-slate-100'} rounded transition-colors">
                 <input type="checkbox" class="channel-cb" value="\${i}" onclick="event.stopPropagation()">
@@ -267,12 +351,12 @@ const FULL_HTML = `<!DOCTYPE html>
     function selectG(i) { activeGroup = i; activeChannel = -1; renderG(); }
     function selectC(i, e) { if(e && e.target.type === 'checkbox') return; activeChannel = i; renderC(); }
 
-    // --- 需求 4: 添加分组弹窗逻辑 ---
     function openGroupModal() {
         document.getElementById('newGName').value = '';
         document.getElementById('newGKeys').value = '';
         document.getElementById('addModal').classList.remove('hidden');
     }
+    
     function confirmAddGroup() {
         const name = document.getElementById('newGName').value.trim();
         const keys = document.getElementById('newGKeys').value.trim();
@@ -289,7 +373,6 @@ const FULL_HTML = `<!DOCTYPE html>
         } catch(e) { alert('JSON 格式错误'); }
     }
 
-    // --- 移动与删除通用逻辑 (上下移动 & ❌) ---
     function moveItem(type, dir) {
         if(type === 'group' && activeGroup >= 0) {
             const t = activeGroup + dir;
@@ -315,18 +398,16 @@ const FULL_HTML = `<!DOCTYPE html>
         }
     }
 
-    // --- 需求 5: 自动排序 ---
     function sortChannels() {
         if(activeGroup < 0) return;
         data[activeGroup].channels.sort((a,b) => a.name.localeCompare(b.name, 'zh-CN'));
         renderC(); saveData();
     }
 
-    // --- 需求 6: 频道多选合并 ---
     function mergeChannels() {
         if(activeGroup < 0) return;
         const cbs = document.querySelectorAll('.channel-cb:checked');
-        if(cbs.length < 2) return alert('请至少勾选2个频道进行合并');
+        if(cbs.length < 2) return alert('请至少勾选 2 个频道进行合并');
         if(!confirm(\`确定合并选中的 \${cbs.length} 个频道吗?\`)) return;
         
         let targetIdx = parseInt(cbs[0].value);
@@ -339,17 +420,13 @@ const FULL_HTML = `<!DOCTYPE html>
             if(idx !== targetIdx) toDelete.push(idx);
         });
 
-        // 去重并赋给第一个频道
         data[activeGroup].channels[targetIdx].urls = [...new Set(allUrls)];
-        
-        // 从后往前删除，避免索引偏移
         toDelete.sort((a,b)=>b-a).forEach(idx => data[activeGroup].channels.splice(idx, 1));
         
         activeChannel = targetIdx;
         renderC(); saveData();
     }
 
-    // --- 右侧详情区功能 ---
     function saveChannelInfo() {
         if(activeGroup < 0 || activeChannel < 0) return;
         data[activeGroup].channels[activeChannel].name = document.getElementById('cName').value.trim();
@@ -372,7 +449,6 @@ const FULL_HTML = `<!DOCTYPE html>
         renderU(); renderC(); saveData();
     }
 
-    // 清空数据
     function clearData() {
         if(confirm('警告：清空所有分组与频道数据？')) { data = []; activeGroup = -1; renderG(); saveData(); }
     }
@@ -382,7 +458,33 @@ const FULL_HTML = `<!DOCTYPE html>
 
 export default {
     async fetch(request) {
-        // 直接返回完整的 HTML 页面，不再依赖 KV 数据库，100% 杜绝 1101 错误。
+        const url = new URL(request.url);
+
+        // --- 核心修复：添加纯净的 CORS 代理，专供解析远程 M3U 链接使用 ---
+        if (url.pathname === '/proxy') {
+            const targetUrl = url.searchParams.get('url');
+            if (!targetUrl) return new Response('Missing target URL', { status: 400 });
+            
+            try {
+                const response = await fetch(targetUrl, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                });
+                return new Response(response.body, {
+                    status: response.status,
+                    headers: { 
+                        'Access-Control-Allow-Origin': '*',
+                        'Content-Type': 'text/plain; charset=utf-8' 
+                    }
+                });
+            } catch (error) {
+                return new Response('Proxy fetch failed', { 
+                    status: 500, 
+                    headers: { 'Access-Control-Allow-Origin': '*' } 
+                });
+            }
+        }
+
+        // 默认路由返回完整前端代码
         return new Response(FULL_HTML, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });
