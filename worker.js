@@ -724,14 +724,14 @@ export default {
              const stored = await env.IPTV_DATA.get("userData", { type: "json" });
              if(!stored || !stored.data) return new Response('No Data', { status: 404 });
              
-             let m3u = "#EXTM3U\\n";
+             let m3u = "#EXTM3U\n";
              stored.data.forEach(g => {
                  g.channels.forEach(c => {
                      if(c.urls && c.urls.length > 0) {
-                         const epgStr = c.epgId ? \` tvg-id="\${c.epgId}" tvg-name="\${c.name}"\` : \` tvg-name="\${c.name}"\`;
+                         const epgStr = c.epgId ? ` tvg-id="${c.epgId}" tvg-name="${c.name}"` : ` tvg-name="${c.name}"`;
                          // 输出该频道第一个有效直链 (或全输出)
-                         m3u += \`#EXTINF:-1\${epgStr} group-title="\${g.name}",\${c.name}\\n\`;
-                         m3u += \`\${c.urls[0]}\\n\`;
+                         m3u += `#EXTINF:-1${epgStr} group-title="${g.name}",${c.name}\n`;
+                         m3u += `${c.urls[0]}\n`;
                      }
                  });
              });
