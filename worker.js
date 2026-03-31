@@ -430,7 +430,8 @@ export default {
             const payload = JSON.parse(raw);
             let res = '#EXTM3U\n';
             payload.data.forEach(g => g.channels.forEach(c => c.urls.forEach(u => {
-                res += \`#EXTINF:-1 tvg-id="\${c.tvgId}" group-title="\${g.name}",\${c.name}\\n\${u}\\n\`;
+                // 此处修正了转义字符，确保 Wrangler 编译通过
+                res += `#EXTINF:-1 tvg-id="${c.tvgId}" group-title="${g.name}",${c.name}\n${u}\n`;
             })));
             return new Response(res);
         }
